@@ -18,6 +18,8 @@
 #include "xi_io_timeouts.h"
 #include "xi_globals.h"
 
+#include "model3.h"
+
 xi_state_t xi_io_net_layer_connect( void* context, void* data, xi_state_t in_out_state )
 {
     XI_LAYER_FUNCTION_PRINT_FUNCTION_DIGEST();
@@ -88,7 +90,7 @@ err_handling:
 }
 
 xi_state_t xi_io_net_layer_init( void* context, void* data, xi_state_t in_out_state )
-{
+{    
     XI_LAYER_FUNCTION_PRINT_FUNCTION_DIGEST();
 
     if ( NULL == context )

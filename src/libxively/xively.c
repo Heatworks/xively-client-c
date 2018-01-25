@@ -43,6 +43,7 @@
 #include <xi_bsp_time.h>
 #include <xi_bsp_rng.h>
 
+#include "Model3.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -539,9 +540,8 @@ xi_state_t xi_connect_with_lastwill_to_impl( xi_context_handle_t xih,
     XI_CHECK_CND_DBGMESSAGE( NULL == xi, XI_NULL_CONTEXT, state,
                              "ERROR: NULL context provided" );
 
-    assert( NULL != client_callback );
-
-
+    assert( NULL != client_callback );    
+    
     event_handle =
         xi_make_threaded_handle( XI_THREADID_THREAD_0, &xi_user_callback_wrapper, xi,
                                  NULL, XI_STATE_OK, ( void* )client_callback );
@@ -549,7 +549,7 @@ xi_state_t xi_connect_with_lastwill_to_impl( xi_context_handle_t xih,
     /* guard against adding two connection requests */
     if ( NULL != xi->context_data.connect_handler.ptr_to_position )
     {
-        xi_debug_format( "Connect could not be performed due to conenction state = %d,"
+        xi_debug_format( "Connect could not be performed due to connection state = %d,"
                          "check if connect operation hasn't been already started.",
                          xi->context_data.connection_data->connection_state );
         return XI_ALREADY_INITIALIZED;
@@ -565,14 +565,13 @@ xi_state_t xi_connect_with_lastwill_to_impl( xi_context_handle_t xih,
            XI_CONNECTION_STATE_UNINITIALIZED !=
                xi->context_data.connection_data->connection_state ) )
     {
-        xi_debug_format( "Connect could not be performed due to conenction state = %d,"
+        xi_debug_format( "Connect could not be performed due to connection state = %d,"
                          "check if connect operation hasn't been already started.",
                          xi->context_data.connection_data->connection_state );
         return XI_ALREADY_INITIALIZED;
     }
-
+    
     xi_debug_format( "connecting with username = \"%s\"", username );
-
     input_layer  = xi->layer_chain.top;
     xi->protocol = XI_MQTT;
 
@@ -592,7 +591,7 @@ xi_state_t xi_connect_with_lastwill_to_impl( xi_context_handle_t xih,
         XI_CHECK_MEMORY( xi->context_data.connection_data, state );
     }
 
-    xi_debug_format( "New host:port [%s]:[%hu]", xi->context_data.connection_data->host,
+    xi_debug_format( "New host:port [%s]:[%u]", xi->context_data.connection_data->host,
                      xi->context_data.connection_data->port );
 
     /* reset the connection state */
@@ -632,7 +631,7 @@ xi_state_t xi_connect( xi_context_handle_t xih,
                        uint16_t keepalive_timeout,
                        xi_session_type_t session_type,
                        xi_user_callback_t* client_callback )
-{
+{    
     return xi_connect_with_lastwill_to_impl(
         xih, XI_MQTT_HOST_ACCESSOR.name, XI_MQTT_HOST_ACCESSOR.port, username, password,
         connection_timeout, keepalive_timeout, session_type, NULL, /* will_topic */

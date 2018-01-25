@@ -226,12 +226,11 @@ xi_state_t xi_event_loop_with_evtds( uint32_t num_iterations,
     while ( xi_evtd_all_continue( event_dispatchers, num_evtds ) &&
             ( 0 == num_iterations || loops_processed < num_iterations ) )
     {
-        loops_processed += 1;
-
+        loops_processed += 1;        
         /* count all sockets that are registered */
         const size_t no_of_sockets_to_update =
-            xi_bsp_event_loop_count_all_sockets( event_dispatchers, num_evtds );
-
+            xi_bsp_event_loop_count_all_sockets( event_dispatchers, num_evtds );        
+            
         /* allocate and prepare space for the sockets */
         xi_bsp_socket_events_t array_of_sockets_to_update[no_of_sockets_to_update];
         memset( array_of_sockets_to_update, 0,

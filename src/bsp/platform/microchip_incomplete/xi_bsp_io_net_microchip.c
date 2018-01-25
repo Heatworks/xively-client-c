@@ -6,38 +6,43 @@
 
 #include <xi_bsp_io_net.h>
 
+#include "tcpip/tcpip.h"
+#include "system_config.h"
+#include "system_definitions.h"
+#include "mqtt_tasks.h"
+
 #define __XI_FAKE_MICROCHIP_BSP_NET_IMPLEMENTATION__
 
 #ifdef __XI_FAKE_MICROCHIP_BSP_NET_IMPLEMENTATION__
 
 #define TRUE 1
 #define FALSE 0
-#define BSP_DEBUG_MESSAGE( ... )
+
 
 typedef uint16_t WORD;
 typedef uint32_t DWORD;
 typedef void* PTR_BASE;
 typedef uint8_t BOOL;
 
-enum
+/*enum
 {
     TCP_OPEN_ROM_HOST,
     TCP_PURPOSE_GENERIC_TCP_CLIENT,
     INVALID_SOCKET
 };
-
+*/
 /* fake microchip network API just for gcc compilation purposes */
-int TCPOpen( DWORD host, int host_type, uint16_t port, int purpose );
+//int TCPOpen( DWORD host, int host_type, uint16_t port, int purpose );
 
-BOOL TCPIsPutReady( intptr_t socket );
-WORD TCPPutArray( intptr_t socket, const uint8_t* buf, size_t count );
-WORD TCPGetArray( intptr_t socket, uint8_t* buf, size_t count );
+//BOOL TCPIsPutReady( intptr_t socket );
+//WORD TCPPutArray( intptr_t socket, const uint8_t* buf, size_t count );
+//WORD TCPGetArray( intptr_t socket, uint8_t* buf, size_t count );
 
-BOOL TCPIsConnected( intptr_t socket );
-BOOL TCPWasReset( intptr_t socket );
+//BOOL TCPIsConnected( intptr_t socket );
+//BOOL TCPWasReset( intptr_t socket );
 
-void TCPDisconnect( intptr_t socket );
-void TCPClose( intptr_t socket );
+//void TCPDisconnect( intptr_t socket );
+//void TCPClose( intptr_t socket );
 
 #endif /* __XI_FAKE_MICROCHIP_BSP_NET_IMPLEMENTATION__ */
 
@@ -48,8 +53,7 @@ extern "C" {
 
 xi_bsp_io_net_state_t xi_bsp_io_net_create_socket( xi_bsp_socket_t* xi_socket )
 {
-    ( void )xi_socket;
-
+    //( void )xi_socket;    
     /* no operation needed here for microchip */
 
     return XI_BSP_IO_NET_STATE_OK;
@@ -58,9 +62,17 @@ xi_bsp_io_net_state_t xi_bsp_io_net_create_socket( xi_bsp_socket_t* xi_socket )
 xi_bsp_io_net_state_t
 xi_bsp_io_net_connect( xi_bsp_socket_t* xi_socket, const char* host, uint16_t port )
 {
-    *xi_socket =
-        TCPOpen( ( DWORD )( PTR_BASE )host, TCP_OPEN_ROM_HOST, /*, TCP_OPEN_RAM_HOST */
-                 port, TCP_PURPOSE_GENERIC_TCP_CLIENT ); /*, TCP_PURPOSE_DEFAULT ); */
+    /* *xi_socket =
+        TCPOpen( ( DWORD )( PTR_BASE )host, TCP_OPEN_ROM_HOST, 
+                 port, TCP_PURPOSE_GENERIC_TCP_CLIENT );  */
+    
+    //MJW - temporarily just stuff in the IP address of xively.broker.com.  
+    //TO-DO - use DNS to figure this out.
+    IP_MULTI_ADDRESS remoteAddress; 
+    //pull this address from the higher level DNS resolved IP
+    remoteAddress = mqttData.resolvedMqttIp;    
+    
+    *xi_socket = TCPIP_TCP_ClientOpen(IP_ADDRESS_TYPE_IPV4, port, &remoteAddress);
 
     if ( INVALID_SOCKET == *xi_socket )
     {
@@ -88,25 +100,30 @@ xi_bsp_io_net_state_t xi_bsp_io_net_write( xi_bsp_socket_t xi_socket,
                                            const uint8_t* buf,
                                            size_t count )
 {
-    if ( FALSE == TCPIsConnected( xi_socket ) )
+    if ( FALSE == TCPIP_TCP_IsConnected( xi_socket ) )
     {
-        BSP_DEBUG_MESSAGE( "connection reset by peer" );
+        SYS_CONSOLE_PRINT( "connection reset by peer\r\n" );
 
         return XI_BSP_IO_NET_STATE_CONNECTION_RESET;
     }
-    else if ( !TCPIsPutReady( xi_socket ) )
+    else if ( TCPIP_TCP_PutIsReady( xi_socket ) == 0)
     {
-        return XI_BSP_IO_NET_STATE_WANT_WRITE;
+        //MJW changed b/c XI_BSP_IO_NET_STATE_WANT_WRITE doesn't exist??
+        //return XI_BSP_IO_NET_STATE_WANT_WRITE;        
+        return XI_BSP_IO_NET_STATE_BUSY;
     }
 
-    *out_written_count = TCPPutArray( xi_socket, buf, count );
-
-    BSP_DEBUG_MESSAGE( "written: %d bytes", len );
+    //*out_written_count = TCPPutArray( xi_socket, buf, count );
+    *out_written_count = TCPIP_TCP_ArrayPut(xi_socket, buf, count);
+    SYS_CONSOLE_PRINT( "written: %d bytes\r\n", *out_written_count );
 
     if ( 0 == *out_written_count )
     {
         /* treat this like EAGAIN */
-        return XI_BSP_IO_NET_STATE_WANT_WRITE;
+        //MJW changed b/c XI_BSP_IO_NET_STATE_WANT_WRITE doesn't exist??
+        //return XI_BSP_IO_NET_STATE_WANT_WRITE;
+        SYS_CONSOLE_PRINT( "Wanted to write, but couldn't!\r\n");
+        return XI_BSP_IO_NET_STATE_BUSY;
     }
 
     return XI_BSP_IO_NET_STATE_OK;
@@ -117,32 +134,37 @@ xi_bsp_io_net_state_t xi_bsp_io_net_read( xi_bsp_socket_t xi_socket,
                                           uint8_t* buf,
                                           size_t count )
 {
-    if ( TCPWasReset( xi_socket ) || !TCPIsConnected( xi_socket ) )
+    if ( TCPIP_TCP_WasReset( xi_socket ) || !TCPIP_TCP_IsConnected( xi_socket ) )
     {
-        BSP_DEBUG_MESSAGE( "connection reset by peer" );
+        SYS_CONSOLE_PRINT( "connection reset by peer\r\n" );
         return XI_BSP_IO_NET_STATE_CONNECTION_RESET;
     }
 
-    *out_read_count = TCPGetArray( xi_socket, buf, count );
+    //*out_read_count = TCPGetArray( xi_socket, buf, count );
+    *out_read_count = TCPIP_TCP_ArrayGet( xi_socket, buf,  count);
 
-    BSP_DEBUG_MESSAGE( "read: %d bytes", len );
+    SYS_CONSOLE_PRINT( "read: %d bytes\r\n", *out_read_count );
 
     if ( *out_read_count < 0 )
     {
-        if ( TCPWasReset( xi_socket ) || !TCPIsConnected( xi_socket ) )
+        if ( TCPIP_TCP_WasReset( xi_socket ) || !TCPIP_TCP_IsConnected( xi_socket ) )
         {
-            BSP_DEBUG_MESSAGE( "connection reset by peer" );
+            SYS_CONSOLE_PRINT( "connection reset by peer\r\n" );
             return XI_BSP_IO_NET_STATE_CONNECTION_RESET;
         }
         else
         {
-            return XI_BSP_IO_NET_STATE_WANT_READ;
+            //MJW changed b/c XI_BSP_IO_NET_STATE_WANT_READ doesn't exist??
+            //return XI_BSP_IO_NET_STATE_WANT_READ;
+            return XI_BSP_IO_NET_STATE_BUSY;            
         }
     }
     else if ( *out_read_count == 0 )
     {
         /* treat this like EAGAIN */
-        return XI_BSP_IO_NET_STATE_WANT_READ;
+        //MJW changed b/c XI_BSP_IO_NET_STATE_WANT_READ doesn't exist??
+        //return XI_BSP_IO_NET_STATE_WANT_READ;
+        return XI_BSP_IO_NET_STATE_BUSY;            
     }
 
     return XI_BSP_IO_NET_STATE_OK;
@@ -151,8 +173,8 @@ xi_bsp_io_net_state_t xi_bsp_io_net_read( xi_bsp_socket_t xi_socket,
 xi_bsp_io_net_state_t xi_bsp_io_net_close_socket( xi_bsp_socket_t* xi_socket )
 {
     /* close the connection & the socket */
-    TCPDisconnect( *xi_socket );
-    TCPClose( *xi_socket );
+    TCPIP_TCP_Disconnect( *xi_socket );
+    TCPIP_TCP_Close( *xi_socket );
 
     return XI_BSP_IO_NET_STATE_OK;
 }
@@ -173,7 +195,7 @@ xi_bsp_io_net_state_t xi_bsp_io_net_select( xi_bsp_socket_events_t* socket_event
 
         if ( 1 == socket_events->in_socket_want_connect )
         {
-            if ( TRUE == TCPIsConnected( socket_events->xi_socket ) )
+            if ( TRUE == TCPIP_TCP_IsConnected( socket_events->xi_socket ) )
             {
                 socket_events->out_socket_connect_finished = 1;
             }
@@ -181,16 +203,16 @@ xi_bsp_io_net_state_t xi_bsp_io_net_select( xi_bsp_socket_events_t* socket_event
         }
 
         if ( 1 == socket_events->in_socket_want_read &&
-             ( TCPIsGetReady( socket_events->xi_socket ) > 0 ||
-               0 == TCPIsConnected( socket_events->xi_socket ) ) )
+             ( TCPIP_TCP_GetIsReady( socket_events->xi_socket ) > 0 ||
+               0 == TCPIP_TCP_IsConnected( socket_events->xi_socket ) ) )
         {
             socket_events->out_socket_can_read = 1;
             continue;
         }
 
         if ( 1 == socket_events->in_socket_want_write &&
-             ( TCPIsPutReady( socket_events->xi_socket ) > 0 ||
-               0 == TCPIsConnected( socket_events->xi_socket ) ) )
+             ( TCPIP_TCP_PutIsReady( socket_events->xi_socket ) > 0 ||
+               0 == TCPIP_TCP_IsConnected( socket_events->xi_socket ) ) )
         {
             socket_events->out_socket_can_write = 1;
             continue;

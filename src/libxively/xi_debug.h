@@ -15,6 +15,7 @@
 #include "xi_config.h"
 #include "xi_data_desc.h"
 #include "xi_bsp_time.h"
+#include "Model3.h" //we use SYS_CONSOLE_PRINT for debug, and all these functions need to know about it
 
 #ifdef XI_PLATFORM_BASE_WMSDK
 #include <wm_os.h>
@@ -38,19 +39,19 @@ const char* xi_debug_dont_print_the_path( const char* msg );
 void xi_debug_data_logger_impl( const char* msg, const xi_data_desc_t* data_desc );
 
 #define xi_debug_logger( msg )                                                           \
-    __xi_printf( "[%ld][%s:%d (%s)] %s\n", xi_bsp_time_getcurrenttime_milliseconds(),    \
+    __xi_printf( "[%ld][%s:%d (%s)] %s\r\n", xi_bsp_time_getcurrenttime_milliseconds(),    \
                  xi_debug_dont_print_the_path( __FILE__ ), __LINE__, __func__, msg )
 #define xi_debug_format( fmt, ... )                                                      \
     __xi_printf(                                                                         \
-        "[%ld][%s:%d (%s)] " fmt "\n", xi_bsp_time_getcurrenttime_milliseconds(),        \
+        "[%ld][%s:%d (%s)] " fmt "\r\n", xi_bsp_time_getcurrenttime_milliseconds(),        \
         xi_debug_dont_print_the_path( __FILE__ ), __LINE__, __func__, __VA_ARGS__ )
 #define xi_debug_printf( ... ) __xi_printf( __VA_ARGS__ )
 #define xi_debug_function_entered()                                                      \
-    __xi_printf( "[%ld][%s:%d (%s)] -> entered\n",                                       \
+    __xi_printf( "[%ld][%s:%d (%s)] -> entered\r\n",                                       \
                  xi_bsp_time_getcurrenttime_milliseconds(),                              \
                  xi_debug_dont_print_the_path( __FILE__ ), __LINE__, __func__ )
 #define xi_debug_data_logger( msg, dsc )                                                 \
-    __xi_printf( "[%ld][%s:%d (%s)] #\n", xi_bsp_time_getcurrenttime_milliseconds(),     \
+    __xi_printf( "[%ld][%s:%d (%s)] #\r\n", xi_bsp_time_getcurrenttime_milliseconds(),     \
                  xi_debug_dont_print_the_path( __FILE__ ), __LINE__, __func__ );         \
     xi_debug_data_logger_impl( msg, dsc )
 #else /* XI_DEBUG_OUTPUT */
@@ -65,7 +66,7 @@ void xi_debug_data_logger_impl( const char* msg, const xi_data_desc_t* data_desc
 #define XI_LAYER_FUNCTION_PRINT_FUNCTION_DIGEST_OFF()                                    \
     __xi_printf( "[%ld][ libxively  ] %-50s, layerchainid = %p, in_out_state = %d, "     \
                  "layer_type_id = "                                                      \
-                 "%d, data = %p\n",                                                      \
+                 "%d, data = %p\r\n",                                                      \
                  xi_bsp_time_getcurrenttime_milliseconds(), __func__,                    \
                  XI_THIS_LAYER( context )->context_data, in_out_state,                   \
                  XI_THIS_LAYER( context )->layer_type_id, data )
