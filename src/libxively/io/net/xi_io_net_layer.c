@@ -18,7 +18,7 @@
 #include "xi_io_timeouts.h"
 #include "xi_globals.h"
 
-#include "model3.h"
+#include <xc.h>
 
 xi_state_t xi_io_net_layer_connect( void* context, void* data, xi_state_t in_out_state )
 {

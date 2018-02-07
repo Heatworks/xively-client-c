@@ -15,7 +15,7 @@
 #include "xi_config.h"
 #include "xi_data_desc.h"
 #include "xi_bsp_time.h"
-#include "Model3.h" //we use SYS_CONSOLE_PRINT for debug, and all these functions need to know about it
+#include <xc.h> //we use SYS_CONSOLE_PRINT for debug, and all these functions need to know about it
 
 #ifdef XI_PLATFORM_BASE_WMSDK
 #include <wm_os.h>

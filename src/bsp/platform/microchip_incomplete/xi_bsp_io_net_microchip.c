@@ -6,17 +6,16 @@
 
 #include <xi_bsp_io_net.h>
 
-#include "tcpip/tcpip.h"
 #include "system_config.h"
 #include "system_definitions.h"
 #include "mqtt_tasks.h"
+#include <stdbool.h>
+#include "socket.h"
+#include "wifi.h"
 
-#define __XI_FAKE_MICROCHIP_BSP_NET_IMPLEMENTATION__
+#define __XI_MICROCHIP_BSP_NET_IMPLEMENTATION__
 
-#ifdef __XI_FAKE_MICROCHIP_BSP_NET_IMPLEMENTATION__
-
-#define TRUE 1
-#define FALSE 0
+#ifdef __XI_MICROCHIP_BSP_NET_IMPLEMENTATION__
 
 
 typedef uint16_t WORD;
@@ -54,25 +53,44 @@ extern "C" {
 xi_bsp_io_net_state_t xi_bsp_io_net_create_socket( xi_bsp_socket_t* xi_socket )
 {
     //( void )xi_socket;    
-    /* no operation needed here for microchip */
-
+    xi_socket = socket(AF_INET, SOCK_STREAM, SOCKET_FLAGS_SSL);
+    if (xi_socket < 0) {
+		SYS_CONSOLE_PRINT("Socket creation error\r\n");
+		close(xi_socket);
+		return XI_BSP_IO_NET_STATE_ERROR;
+	}
     return XI_BSP_IO_NET_STATE_OK;
 }
 
 xi_bsp_io_net_state_t
 xi_bsp_io_net_connect( xi_bsp_socket_t* xi_socket, const char* host, uint16_t port )
 {
-    /* *xi_socket =
-        TCPOpen( ( DWORD )( PTR_BASE )host, TCP_OPEN_ROM_HOST, 
-                 port, TCP_PURPOSE_GENERIC_TCP_CLIENT );  */
-    
-    //MJW - temporarily just stuff in the IP address of xively.broker.com.  
-    //TO-DO - use DNS to figure this out.
-    IP_MULTI_ADDRESS remoteAddress; 
-    //pull this address from the higher level DNS resolved IP
-    remoteAddress = mqttData.resolvedMqttIp;    
-    
-    *xi_socket = TCPIP_TCP_ClientOpen(IP_ADDRESS_TYPE_IPV4, port, &remoteAddress);
+    struct sockaddr_in addr_in;
+
+	addr_in.sin_family = AF_INET;
+	addr_in.sin_port = _htons(port);
+	addr_in.sin_addr.s_addr = mqttData.resolvedMqttIp.Val;
+
+	/* Create secure socket. */
+	if (xi_socket < 0) {
+		xi_socket = socket(AF_INET, SOCK_STREAM, SOCKET_FLAGS_SSL);
+	}
+
+	/* Check if socket was created successfully. */
+	if (xi_socket < 0) {
+		SYS_CONSOLE_PRINT("Socket creation error\r\n");
+		close(xi_socket);
+		return XI_BSP_IO_NET_STATE_ERROR;
+	}
+
+	/* If success, connect to socket. */
+	if (connect(xi_socket, (struct sockaddr *)&addr_in, sizeof(struct sockaddr_in)) != SOCK_ERR_NO_ERROR) {
+		SYS_CONSOLE_PRINT("Socket connection error\r\n");
+		return XI_BSP_IO_NET_STATE_ERROR;
+	}
+
+	/* Success. */
+	return XI_BSP_IO_NET_STATE_OK;
 
     if ( INVALID_SOCKET == *xi_socket )
     {
@@ -100,21 +118,25 @@ xi_bsp_io_net_state_t xi_bsp_io_net_write( xi_bsp_socket_t xi_socket,
                                            const uint8_t* buf,
                                            size_t count )
 {
-    if ( FALSE == TCPIP_TCP_IsConnected( xi_socket ) )
+    if ( wifiData.socketStatus == SOCKET_ERROR)
     {
         SYS_CONSOLE_PRINT( "connection reset by peer\r\n" );
 
         return XI_BSP_IO_NET_STATE_CONNECTION_RESET;
     }
-    else if ( TCPIP_TCP_PutIsReady( xi_socket ) == 0)
+    //TO DO:  MJW how do we check if the winc1500 is "Ready" to receive more data?
+    /*else if ( TCPIP_TCP_PutIsReady( xi_socket ) == 0)
     {
         //MJW changed b/c XI_BSP_IO_NET_STATE_WANT_WRITE doesn't exist??
         //return XI_BSP_IO_NET_STATE_WANT_WRITE;        
         return XI_BSP_IO_NET_STATE_BUSY;
-    }
-
-    //*out_written_count = TCPPutArray( xi_socket, buf, count );
-    *out_written_count = TCPIP_TCP_ArrayPut(xi_socket, buf, count);
+    }*/
+        
+    send((SOCKET) xi_socket, buf, count, 0);
+    
+    //looks like "out written count" is used to monitor what has been sent.  We only know this from our socket callback.
+    // how to deal with this?
+    *out_written_count = wifiData.s16Sent;
     SYS_CONSOLE_PRINT( "written: %d bytes\r\n", *out_written_count );
 
     if ( 0 == *out_written_count )
@@ -134,20 +156,21 @@ xi_bsp_io_net_state_t xi_bsp_io_net_read( xi_bsp_socket_t xi_socket,
                                           uint8_t* buf,
                                           size_t count )
 {
-    if ( TCPIP_TCP_WasReset( xi_socket ) || !TCPIP_TCP_IsConnected( xi_socket ) )
+    if ( wifiData.socketStatus == SOCKET_ERROR)
     {
         SYS_CONSOLE_PRINT( "connection reset by peer\r\n" );
         return XI_BSP_IO_NET_STATE_CONNECTION_RESET;
     }
 
-    //*out_read_count = TCPGetArray( xi_socket, buf, count );
-    *out_read_count = TCPIP_TCP_ArrayGet( xi_socket, buf,  count);
-
+    recv((SOCKET) xi_socket, buf, count, 10000);    //10 second timeout??  what should we use here
+    
+    *out_read_count = wifiData.s16Received;
+    
     SYS_CONSOLE_PRINT( "read: %d bytes\r\n", *out_read_count );
 
     if ( *out_read_count < 0 )
     {
-        if ( TCPIP_TCP_WasReset( xi_socket ) || !TCPIP_TCP_IsConnected( xi_socket ) )
+        /*if ( TCPIP_TCP_WasReset( xi_socket ) || !TCPIP_TCP_IsConnected( xi_socket ) )
         {
             SYS_CONSOLE_PRINT( "connection reset by peer\r\n" );
             return XI_BSP_IO_NET_STATE_CONNECTION_RESET;
@@ -157,7 +180,8 @@ xi_bsp_io_net_state_t xi_bsp_io_net_read( xi_bsp_socket_t xi_socket,
             //MJW changed b/c XI_BSP_IO_NET_STATE_WANT_READ doesn't exist??
             //return XI_BSP_IO_NET_STATE_WANT_READ;
             return XI_BSP_IO_NET_STATE_BUSY;            
-        }
+        }*/
+        return XI_BSP_IO_NET_STATE_BUSY;            
     }
     else if ( *out_read_count == 0 )
     {
@@ -172,10 +196,8 @@ xi_bsp_io_net_state_t xi_bsp_io_net_read( xi_bsp_socket_t xi_socket,
 
 xi_bsp_io_net_state_t xi_bsp_io_net_close_socket( xi_bsp_socket_t* xi_socket )
 {
-    /* close the connection & the socket */
-    TCPIP_TCP_Disconnect( *xi_socket );
-    TCPIP_TCP_Close( *xi_socket );
-
+    /* close the connection & the socket */    
+    close(xi_socket);
     return XI_BSP_IO_NET_STATE_OK;
 }
 
@@ -195,14 +217,14 @@ xi_bsp_io_net_state_t xi_bsp_io_net_select( xi_bsp_socket_events_t* socket_event
 
         if ( 1 == socket_events->in_socket_want_connect )
         {
-            if ( TRUE == TCPIP_TCP_IsConnected( socket_events->xi_socket ) )
+            /*if ( TRUE == TCPIP_TCP_IsConnected( socket_events->xi_socket ) )
             {
                 socket_events->out_socket_connect_finished = 1;
-            }
+            }*/
             continue;
         }
 
-        if ( 1 == socket_events->in_socket_want_read &&
+        /*if ( 1 == socket_events->in_socket_want_read &&
              ( TCPIP_TCP_GetIsReady( socket_events->xi_socket ) > 0 ||
                0 == TCPIP_TCP_IsConnected( socket_events->xi_socket ) ) )
         {
@@ -216,7 +238,7 @@ xi_bsp_io_net_state_t xi_bsp_io_net_select( xi_bsp_socket_events_t* socket_event
         {
             socket_events->out_socket_can_write = 1;
             continue;
-        }
+        }*/
 
         if ( 1 == socket_events->in_socket_want_error )
         {

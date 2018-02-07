@@ -11,9 +11,10 @@
 #include "xi_debug.h"
 #include "xi_macros.h"
 #include "xi_allocator.h"
+#include "xi_config.h"  //MJW added
 
 #if XI_DEBUG_OUTPUT
-void xi_debug_mqtt_message_dump( const xi_mqtt_message_t* message )
+void xi_debug_mqtt_message_dump( const xi_mqtt_message_t *message )
 {
     xi_debug_printf( "message\n" );
     xi_debug_printf( "  type:              %d\n",

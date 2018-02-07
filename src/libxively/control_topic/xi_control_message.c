@@ -87,7 +87,7 @@ void xi_control_message_free( xi_control_message_t** control_message )
 
 #if XI_DEBUG_OUTPUT
 void xi_debug_control_message_dump( const xi_control_message_t* control_message,
-                                    const char* debug_custom_label )
+                                    const char *debug_custom_label )
 {
     XI_UNUSED( debug_custom_label );
     xi_debug_printf( "+++ xi_control_message_t: +++++++++++++++++++++++++ [%s] \n",

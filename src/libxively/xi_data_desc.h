@@ -13,6 +13,7 @@
 
 #include "xi_err.h"
 #include "xi_memory_type.h"
+#include "xi_config.h" //MJW added
 
 #ifdef __cplusplus
 extern "C" {

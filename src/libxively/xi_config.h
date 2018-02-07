@@ -7,6 +7,12 @@
 #ifndef __XI_CONFIG_H__
 #define __XI_CONFIG_H__
 
+#define XI_DEBUG_OUTPUT 1
+#include "system_config.h"
+#include "system_definitions.h"
+#define XI_DEBUG_PRINTF SYS_CONSOLE_PRINT
+
+
 #ifdef __MBED__
 #include "xi_config_mbed.h"
 #endif

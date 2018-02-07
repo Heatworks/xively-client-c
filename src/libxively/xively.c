@@ -43,7 +43,10 @@
 #include <xi_bsp_time.h>
 #include <xi_bsp_rng.h>
 
-#include "Model3.h"
+#include <xc.h>
+#include "system_config.h"
+#include "system_definitions.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -8,6 +8,7 @@
 #define __XI_CONTROL_MESSAGE_H__
 
 #include <stdint.h>
+#include "xi_config.h"  //MJW added
 
 typedef enum xi_control_message_type_e {
     XI_CONTROL_MESSAGE_CS__SFT_FILE_INFO =

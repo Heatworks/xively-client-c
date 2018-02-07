@@ -6,8 +6,12 @@
 
 #include <xi_bsp_time.h>
 //#include <time.h>
-#include "tcpip/tcpip.h"
-#include "Model3.h"
+//#include "tcpip/tcpip.h"
+#include "wifi.h"
+#include <xc.h>
+#include "system_config.h"
+#include "system_definitions.h"
+
 
 void xi_bsp_time_init()
 {
@@ -18,33 +22,48 @@ void xi_bsp_time_init()
 //    return ( xi_time_t )TickConvertToMilliseconds( TickGet() );
 //}
 
+//Adopted from Microchip's TCPIP sntp.c
+static uint32_t TCPIP_SNTP_CurrTime(uint32_t* pMs)
+{
+
+    TCPIP_SNTP_TIME_STAMP deltaStamp, fractStamp;
+    
+    uint32_t ticksPerSec = SYS_TMR_TickCounterFrequencyGet();
+    uint64_t deltaTick = SYS_TMR_TickCountGetLong() - wifiData.ntpTimeStampTicks;
+    
+    // calculate seconds = deltaTick / ticksPerSec;
+    deltaStamp.tStampSeconds = (uint32_t)(deltaTick / ticksPerSec);
+
+    // calculate fract part: (deltaTick % ticksPerSec) / ticksPerSec) * 2^32 ; 
+    fractStamp.tStampSeconds = deltaTick - deltaStamp.tStampSeconds * ticksPerSec;
+    fractStamp.tStampFraction = 0;
+
+    deltaStamp.tStampFraction = (uint32_t)(fractStamp.llStamp / ticksPerSec);
+
+    // 64 bit addition gets us the new time stamp
+    deltaStamp.llStamp += wifiData.latestSecsSince1900.llStamp;
+
+
+    // calculate milliseconds: (fract / 2 ^ 32) * 1000;
+    if(pMs)
+    {
+        fractStamp.llStamp = (uint64_t)deltaStamp.tStampFraction * 1000;
+        *pMs = fractStamp.tStampSeconds;
+    }
+
+    return deltaStamp.tStampSeconds - TCPIP_NTP_EPOCH;
+}
+
 
 xi_time_t xi_bsp_time_getcurrenttime_seconds(void)
 {
-    unsigned int utcSeconds;
-    unsigned int sntpMs;
-    TCPIP_SNTP_RESULT result;
-    result = TCPIP_SNTP_TimeGet(&utcSeconds, &sntpMs);
     
-    if(result == SNTP_RES_OK){
-        return (xi_time_t)utcSeconds;
-    }
-    else{
-        return -1;
-    }
+    return (xi_time_t)TCPIP_SNTP_CurrTime(0);
 }
 
 xi_time_t xi_bsp_time_getcurrenttime_milliseconds(void)
 {
-    unsigned int utcSeconds;
-    unsigned int sntpMs;
-    TCPIP_SNTP_RESULT result;
-    result = TCPIP_SNTP_TimeGet(&utcSeconds, &sntpMs);
-    SYS_CONSOLE_PRINT("Time result:%ld\r\n", sntpMs);
-    if(result == SNTP_RES_OK){
-        return (xi_time_t)sntpMs;
-    }
-    else{
-        return -1;
-    }
+    uint32_t msTime;
+    TCPIP_SNTP_CurrTime(&msTime);
+    return (xi_time_t)msTime;
 }

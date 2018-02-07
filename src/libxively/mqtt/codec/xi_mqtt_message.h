@@ -12,7 +12,7 @@
 
 #include "xi_data_desc.h"
 #include <xively_mqtt.h>
-
+#include "xi_config.h"  //MJW added
 #ifdef __cplusplus
 extern "C" {
 #endif
