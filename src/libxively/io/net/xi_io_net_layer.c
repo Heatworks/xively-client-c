@@ -46,7 +46,7 @@ xi_state_t xi_io_net_layer_connect( void* context, void* data, xi_state_t in_out
 
     XI_CR_START( layer_data->layer_connect_cs )
 
-    xi_debug_format( "Connecting layer [%d] to the endpoint: %s:%hu",
+    xi_debug_format( "Connecting layer [%d] to the endpoint: %s:%u",
                      XI_THIS_LAYER( context )->layer_type_id, connection_data->host,
                      connection_data->port );
 

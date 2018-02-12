@@ -16,14 +16,14 @@
 #if XI_DEBUG_OUTPUT
 void xi_debug_mqtt_message_dump( const xi_mqtt_message_t *message )
 {
-    xi_debug_printf( "message\n" );
-    xi_debug_printf( "  type:              %d\n",
+    xi_debug_printf( "message\r\n" );
+    xi_debug_printf( "  type:              %d\r\n",
                      message->common.common_u.common_bits.type );
-    xi_debug_printf( "  qos:               %d\n",
+    xi_debug_printf( "  qos:               %d\r\n",
                      message->common.common_u.common_bits.qos );
-    xi_debug_printf( "  dup:               %s\n",
+    xi_debug_printf( "  dup:               %s\r\n",
                      message->common.common_u.common_bits.dup ? "true" : "false" );
-    xi_debug_printf( "  retain:            %s\n",
+    xi_debug_printf( "  retain:            %s\r\n",
                      message->common.common_u.common_bits.retain ? "true" : "false" );
 
     if ( message->common.common_u.common_bits.type == XI_MQTT_TYPE_CONNECT )
@@ -171,7 +171,7 @@ uint16_t xi_mqtt_get_message_id( const xi_mqtt_message_t* msg )
         case XI_MQTT_TYPE_PINGRESP:
             return 0;
         case XI_MQTT_TYPE_DISCONNECT:
-            return 0;
+            return 0;        
         default:
             xi_debug_logger( "unhandled msg type... " );
     }
